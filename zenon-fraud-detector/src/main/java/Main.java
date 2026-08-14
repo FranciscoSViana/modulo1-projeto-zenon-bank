@@ -1,7 +1,9 @@
 import br.com.zenon.fraud.Transaction;
 import br.com.zenon.fraud.TransactionCustomer;
+import br.com.zenon.fraud.TransactionIngestor;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static br.com.zenon.fraud.TransactionType.CASH_OUT;
 import static br.com.zenon.fraud.TransactionType.PAYMENT;
@@ -25,5 +27,14 @@ public class Main {
 
         IO.println(t1);
         IO.println(t2);
+
+
+        IO.println("--------------------------------------------------------------------------------------");
+
+        var transactionIngestor = new TransactionIngestor();
+        List<Transaction> transactions = transactionIngestor.read("data/PS_20174392719_1491204439457_log.csv");
+        IO.println(transactions.size());
+
+        transactions.stream().limit(10).forEach(System.out::println);
     }
 }
