@@ -9,7 +9,7 @@ public record TransactionCustomer(String name, BigDecimal oldBalance, BigDecimal
         Objects.requireNonNull(name);
         Objects.requireNonNull(oldBalance);
         Objects.requireNonNull(newBalance);
-        
+
         if (name.trim().isEmpty()) throw new TransactionException("O nome não pode ser vazio: " + name);
 
         if (oldBalance.signum() < 0) throw new TransactionException("O valor de oldBalancer deve ser positivo ou zero: " + oldBalance);
