@@ -11,7 +11,8 @@ public class ReportMain {
 
     static void main(String[] args) {
 
-        var locale = Locale.of("en");
+        String language = (args.length > 0) ? args[0] : "pt-BR";
+        var locale = Locale.of(language);
 
         var integerFormatter = NumberFormat.getIntegerInstance(locale);
 
