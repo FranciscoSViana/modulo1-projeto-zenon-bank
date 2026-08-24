@@ -11,7 +11,7 @@ public class ConnectionFactory {
     public static Connection getConnection() {
 
         try {
-            return DriverManager.getConnection("jdbc:mysql://localhost:3306/zenon_frauds", "root", "root");
+            return DriverManager.getConnection("jdbc:mysql://localhost:3306/zenon_frauds?rewriteBatchedStatements=true", "root", "root");
         } catch (SQLException e) {
             throw new RuntimeException("Erro ao conectar com o BD", e);
         }
