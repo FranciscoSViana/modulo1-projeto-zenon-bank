@@ -11,18 +11,20 @@ import java.util.Optional;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 public class EfficientTransactionIngestor {
 
-    public static final int FRAUD_LIMIT = 10_000;
-    public static final int LINE_BATCH_SIZE = 5_000;
+    public static final int LINE_BATCH_SIZE = 2_500;
+
+    private final Semaphore dbPermits = new Semaphore(10);
 
     public void readAsBatch(String fileName, Consumer<List<Transaction>> batchConsumer) {
         Path path = Path.of(fileName);
 
-        try (ExecutorService executor = Executors.newFixedThreadPool(10);
+        try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
              Stream<String> lines = Files.lines(path).skip(1)) {
             var iterator = lines.iterator();
 
@@ -34,7 +36,13 @@ public class EfficientTransactionIngestor {
                 if (lineBatch.size() >= LINE_BATCH_SIZE) {
                     IO.println("Executando batch ingestor... ");
                     final List<String> currentLineBatch = List.copyOf(lineBatch);
-                    executor.submit(() -> executeBatch(currentLineBatch, batchConsumer));
+                    executor.submit(() -> {
+                        try {
+                            executeBatch(currentLineBatch, batchConsumer);
+                        } catch (Exception e) {
+                            throw new TransactionException("Erro ao executar batch ingestor: " + e.getMessage());
+                        }
+                    });
                     lineBatch.clear();
                 }
             }
@@ -42,7 +50,13 @@ public class EfficientTransactionIngestor {
             if (!lineBatch.isEmpty()) {
                 IO.println("Executando batch final ingestor... ");
                 final List<String> currentLineBatch = List.copyOf(lineBatch);
-                executor.submit(() -> executeBatch(currentLineBatch, batchConsumer));
+                executor.submit(() -> {
+                    try {
+                        executeBatch(currentLineBatch, batchConsumer);
+                    } catch (Exception e) {
+                        throw new TransactionException("Erro ao executar batch final ingestor: " + e.getMessage());
+                    }
+                });
             }
         } catch (Exception ex) {
             throw new RuntimeException("Erro ao ler o arquivo: " + fileName, ex);
@@ -57,7 +71,16 @@ public class EfficientTransactionIngestor {
                 .map(Optional::get)
                 .toList();
 
-        batchConsumer.accept(transactionBatch);
+        try {
+            dbPermits.acquire();
+            try {
+                batchConsumer.accept(transactionBatch);
+            } finally {
+                dbPermits.release();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     public void readAsStream(String fileName, Consumer<Transaction> consumer) {
